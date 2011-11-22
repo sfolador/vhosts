@@ -1,0 +1,51 @@
+#!/bin/bash
+sitename=$1
+echo "Usage: testScript hostname"
+echo "example:    testScript example.co.uk "
+
+if [ -n "$sitename" ]
+	then
+	echo "You are going to create a new vhost in this machine. "
+	echo  "Do you confirm this name: local.$sitename ?[ yes | no ]"
+	read resp
+	if [ "$resp" = "yes" ]
+		then
+		site=local.$sitename
+		alreadyThere=`grep -c $site /etc/hosts`
+		if [ $alreadyThere -eq 0 ]
+			then
+			echo -e "\n127.0.0.1 $site\n" | sudo tee -a /etc/hosts
+			echo "host saved."
+			echo "Do you want to update the apache configuration(httpd-vhosts.conf)? [ yes | no ]"
+			read resp
+			if [ "$resp" = "yes" ]
+				then
+			 	echo -e "<Directory \"/webalias/$site\">
+	Options Indexes MultiViews Includes FollowSymLinks
+	AllowOverride All
+	Order allow,deny
+	Allow From All
+	</Directory>
+	<VirtualHost *:80>
+	ServerName \"$site\"
+	DocumentRoot \"/webalias/$site/web\"
+	ErrorLog \"/private/var/log/apache2/$site-error_log\" 
+	CustomLog \"/private/var/log/apache2/$site-access_log\" common
+	</VirtualHost>\n" | sudo tee -a /etc/apache2/extra/httpd-vhosts.conf
+			sudo apachectl graceful
+			else
+				echo "ok, i will not modify the configuration."
+			fi
+			
+		else
+			echo "host already present"
+			echo "removing line"
+			sed /$site/d /etc/hosts | sudo tee /etc/hosts
+			
+		fi
+	else
+		echo "fuck"
+	fi
+else
+	echo "non hai inserito"
+fi
